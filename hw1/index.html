@@ -283,33 +283,44 @@
       </td>
       <td>
         <img src="assets/png/can_l0_plinear_1.png" align="middle" width="400px"/>
-        <figcaption align="middle">Task 5 - L_ZERO, P_LINEAR, no supersampling</figcaption>
+        <figcaption align="middle">Task 6 - L_ZERO, P_LINEAR, no supersampling</figcaption>
       </td>
     </tr>
     <br>
     <tr>
       <td>
         <img src="assets/png/can_lnearest_pnearest_1.png" align="middle" width="400px"/>
-        <figcaption align="middle">Task 5 - L_NEAREST, P_NEAREST, no supersampling</figcaption>
+        <figcaption align="middle">Task 6 - L_NEAREST, P_NEAREST, no supersampling</figcaption>
       </td>
       <td>
         <img src="assets/png/can_lnearest_plinear_1.png" align="middle" width="400px"/>
-        <figcaption align="middle">Task 5 - L_NEAREST, P_LINEAR, no supersampling</figcaption>
+        <figcaption align="middle">Task 6 - L_NEAREST, P_LINEAR, no supersampling</figcaption>
       </td>
     </tr>
     <br>
     <tr>
       <td>
         <img src="assets/png/can_llinear_plinear_1.png" align="middle" width="400px"/>
-        <figcaption align="middle">Task 5 - L_LINEAR, P_LINEAR, no supersampling</figcaption>
+        <figcaption align="middle">Task 6 - L_LINEAR, P_LINEAR, no supersampling</figcaption>
       </td>
       <td>
         <img src="assets/png/can_llinear_plinear_16.png" align="middle" width="400px"/>
-        <figcaption align="middle">Task 5 - L_LINEAR, P_LINEAR, 16x supersampling</figcaption>
+        <figcaption align="middle">Task 6 - L_LINEAR, P_LINEAR, 16x supersampling</figcaption>
       </td>
     </tr>
   </table>
 </div>
+
+<p>This is a picture of my friend wearing a fur hat. I chose this picture because of the fine detailing
+  in the fur strands, which when mapped with no special pixel/level sampling or supersampling method,
+  produces noticable aliasing as seen in the top_left picure.
+</p>
+<p>The grid is ordered by increasing anti-aliasing power of the combinations of techniques used.
+  One can see that linear pixel sampling on its one reduces the artifacts significantly, but not thoroughly.
+  Adding on nearest level sampling again significantly improves the resolution of the strands of fur.
+  By the time full trilinear sammpling is used, the quality of the image is almost comparable to 16x sampling,
+  which does not improve the quality beyond that.
+</p>
 
 
 </body>
