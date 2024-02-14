@@ -117,7 +117,7 @@
 <p>What this algorithm does is essentially increasing the rate of point sampling so that it can better capture fast changing
   signals like sharp edges and corners. As seen in the pixel inspector printout below, the sharp edge in test4 is 
   blurred when zoomed in, representing the sub_grid averaging that happens before rendering, and gives the impression of a cleaner
-  line.
+  line, with less jaggies.
 </p>
 
 <div align="middle">
@@ -136,11 +136,11 @@
     <tr>
       <td>
         <img src="assets/png/task2_test4_9.png" align="middle" width="400px"/>
-        <figcaption align="middle">Test 5 - 9x supersampling</figcaption>
+        <figcaption align="middle">Test 4 - 9x supersampling</figcaption>
       </td>
       <td>
         <img src="assets/png/task2_test4_16.png" align="middle" width="400px"/>
-        <figcaption align="middle">Test 5 - 16x supersampling</figcaption>
+        <figcaption align="middle">Test 4 - 16x supersampling</figcaption>
       </td>
     </tr>
   </table>
@@ -156,14 +156,41 @@
   Additional (hierachical) tranformation steps were added to the svg file to move the robots arms and 
   head to give the impression of a waving gesture, with one arm on the hip and a tilted head.
 </p>
-<img src="assets/png/my_robot.png" align="middle" width="400px"/>
-<figcaption align="middle">Task 3 - Waving Blue Robot</figcaption>
+<div align="middle">
+  <img src="assets/png/my_robot.png" align="middle" width="400px"/>
+  <figcaption align="middle">Task 3 - Waving Blue Robot Wearing a Red Shirt</figcaption>  
+</div>
 
 
 
 <h2 align="middle">Section II: Sampling</h2>
 
 <h3 align="middle">Part 4: Barycentric coordinates</h3>
+<p>Barycentric coordinates describe the position of a coordinate relative to a set of vertices (in this case,
+  those of the triangle in which the point lies). It's a degenerate coordinate system that encodes how far the point
+  is from each vertex, thus naturally serves as weights for averaging the pixel values of the vertexes,
+  providing a smoother alternative to simply choosing the nearest vertex.
+  This allows for linear interpolation across
+  triangles and consequently rendering of gradients as seen in test7 below.
+</p>
+<p>An additional triangle svg file was also generated to demonstrate the interpolation effect of using 
+  barycentric coordinates. The relative r, g, and b values at each location literally represents its relative distance
+  to the red, green, and blue vertices, respectively
+</p>
+<div align="middle">
+  <table style="width=100%">
+    <tr>
+      <td>
+        <img src="assets/png/barycentric.png" align="middle" width="400px"/>
+        <figcaption align="middle">Triangle Interpolation Demo</figcaption>
+      </td>
+      <td>
+        <img src="assets/png/task4_test7.png" align="middle" width="400px"/>
+        <figcaption align="middle">Test 7- Barycentric Coordinates - Default Parameters</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
 
 
 <h3 align="middle">Part 5: "Pixel sampling" for texture mapping</h3>
