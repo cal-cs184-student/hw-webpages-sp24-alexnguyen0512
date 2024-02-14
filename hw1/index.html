@@ -245,13 +245,72 @@
 
 
 <h3 align="middle">Part 6: "Level sampling" with mipmaps for texture mapping</h3>
+<p>Level sampling is idea of better matching the resolution of the texture map to the screen sampling rate 
+  at each location in the frame to minimize texture footprints/aliasing. It essentially selects ths best 
+  texture resolution at each location, and downsample when needed but not unneccessarily blur other spots. 
+</p>
+<p>This is done be storing different resolutions of the texture image in different levels known as mipmaps,
+  and calculating the appropriate mipmap level at each sampling locations. The level are calculated by approximating
+  the changing rate (derivative) of the texture signal at each location by calculating the discrete texel difference between
+  surrounding pixel locations. The mipmap levels are then selected based on 2 different scheme, nearest level sampling or
+  linear interpolation between nearest levels.
+</p>
+<p>With the three techniques of pixel sampling, level sampling, and supersampling, our renderer now has 
+  multiple tools to combat aliasing artifacts. The most effective antialiasing technique is supersampling,
+  as this fundamentally just increases the sampling rate accross the board to better high-frequency signals.
+  However, it is also the most memmory intensive, as it requires the storage of a higher resolution sample buffer,
+  which scales linearly with out sampling rate, in addition to the framebuffer.
+</p>
+<p>Bilinear interpolation offers a cheaper (in terms of memory) way to anti-aliase, at the cost of some additional
+  texel access and lerp function calls. It works by essentially working as a low pass filter over the texture signal 
+  before sampling, cutting out high-frequency, artifact-producing signals, without the need to increase sampling rate.
+  While this is much more efficient, it provides less anti-aliasing power than supersampling.
+</p>
+<p>Level sampling takes a step further and adjust said filtering power and the texture resolution based on the local
+  sampling rate of each pixel. This requires slightly more memory as it needs to store multiple copies of the texture
+  in decreasing resolution and requires some additional texel reads and lerp calculation at sampling time. However,
+  the mipmap data structure provides a quite space efficent ways to store the different levels. While still not as
+  powerful as supersampling in terms of anti-aliasing power, mipmap sampling provides a much more efficient, and (for most cases),
+  sufficient antiliasing technique in texture mapping.
+</p>
 
+<div align="middle">
+  <table style="width=100%">
+    <tr>
+      <td>
+        <img src="assets/png/can_l0_pnearest_1.png" align="middle" width="400px"/>
+        <figcaption align="middle">Task 6 - L_ZERO, P_NEAREST, no supersampling</figcaption>
+      </td>
+      <td>
+        <img src="assets/png/can_l0_plinear_1.png" align="middle" width="400px"/>
+        <figcaption align="middle">Task 5 - L_ZERO, P_LINEAR, no supersampling</figcaption>
+      </td>
+    </tr>
+    <br>
+    <tr>
+      <td>
+        <img src="assets/png/can_lnearest_pnearest_1.png" align="middle" width="400px"/>
+        <figcaption align="middle">Task 5 - L_NEAREST, P_NEAREST, no supersampling</figcaption>
+      </td>
+      <td>
+        <img src="assets/png/can_lnearest_plinear_1.png" align="middle" width="400px"/>
+        <figcaption align="middle">Task 5 - L_NEAREST, P_LINEAR, no supersampling</figcaption>
+      </td>
+    </tr>
+    <br>
+    <tr>
+      <td>
+        <img src="assets/png/can_llinear_plinear_1.png" align="middle" width="400px"/>
+        <figcaption align="middle">Task 5 - L_LINEAR, P_LINEAR, no supersampling</figcaption>
+      </td>
+      <td>
+        <img src="assets/png/can_llinear_plinear_16.png" align="middle" width="400px"/>
+        <figcaption align="middle">Task 5 - L_LINEAR, P_LINEAR, 16x supersampling</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
 
-
-<h2 align="middle">Section III: Art Competition</h2>
-<p>If you are not participating in the optional art competition, don't worry about this section!</p>
-
-<h3 align="middle">Part 7: Draw something interesting!</h3>
 
 </body>
 </html>
