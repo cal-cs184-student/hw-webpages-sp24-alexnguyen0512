@@ -69,8 +69,8 @@
   to define the limits of the nested sampling loop.
 </p>
 <p>Here is the screenshot of some test redering of svg files in the svg/basic folder
-  with the pixel inspector centered on a the sharpest edges, 
-  showing signs of aliasing due to the fast changing signals.
+  with the pixel inspector centered on a the sharpest edge in test 4, 
+  showing signs of aliasing due to the fast changing signal.
 </p>
 
 <div align="middle">
@@ -98,37 +98,53 @@
     </tr>
   </table>
 </div>
-<p>Here is an example 2x2 gridlike structure using an HTML table. Each <b>tr</b> is a row and each <b>td</b> is a column in that row. You might find this useful for framing and showing your result images in an organized fashion.</p>
+
+<h3 align="middle">Part 2: Antialiasing triangles</h3>
+<p>Supersampling is implemented by using an intermediary, higher-resolution sample buffer
+  before rendering to the frame buffer. The sample buffer is sample_rate times larger than
+  the frame buffer and stores sample_rate amount of values per frame pixel.
+</p>
+<p>Let s be our sample rate. For each pixel location in the frame, the algorithm sample at s 
+  evenly spaced location within the pixel. This is implemented by a nested loop over sqrt(s) in each
+  direction that dissect each pixel area into a sqrt(s) * sqrt(s) grid. The sampling method
+  at each sub_grid location is the same as above, using line_equation checks and filling in the appropriate
+  sample_buffer locations. 
+</p>
+<p>Here, each subgrid is also organized in the sample buffer in consecutive 1D arrays to make downsampling simpler.
+  Before the values can be rendered to the (smaller) framebuffer, each subgrid need to be averaged into one color value
+  per pixel. This is done by simply adding up each pixel's r, g, and b values in the subgrid and dividing by sample_rate.
+</p>
+<p>What this algorithm does is essentially increasing the rate of point sampling so that it can better capture fast changing
+  signals like sharp edges and corners. As seen in the pixel inspector printout below, the sharp edge in test4 is 
+  blurred when zoomed in, representing the sub_grid averaging that happens before rendering, and gives the impression of a cleaner
+  line.
+</p>
 
 <div align="middle">
   <table style="width=100%">
     <tr>
       <td>
-        <img src="images/image1.png" align="middle" width="400px"/>
-        <figcaption align="middle">Caption goes here.</figcaption>
+        <img src="assets/png/task1_test4.png" align="middle" width="400px"/>
+        <figcaption align="middle">Test 4 - default parameters</figcaption>
       </td>
       <td>
-        <img src="images/image2.png" align="middle" width="400px"/>
-        <figcaption align="middle">Caption goes here.</figcaption>
+        <img src="assets/png/task2_test4_4.png" align="middle" width="400px"/>
+        <figcaption align="middle">Test 4 - 4x supersampling</figcaption>
       </td>
     </tr>
     <br>
     <tr>
       <td>
-        <img src="images/image3.png" align="middle" width="400px"/>
-        <figcaption align="middle">Caption goes here.</figcaption>
+        <img src="assets/png/task2_test4_9.png" align="middle" width="400px"/>
+        <figcaption align="middle">Test 5 - 9x supersampling</figcaption>
       </td>
       <td>
-        <img src="images/image4.png" align="middle" width="400px"/>
-        <figcaption align="middle">Caption goes here.</figcaption>
+        <img src="assets/png/task2_test4_16.png" align="middle" width="400px"/>
+        <figcaption align="middle">Test 5 - 16x supersampling</figcaption>
       </td>
     </tr>
   </table>
 </div>
-
-
-<h3 align="middle">Part 2: Antialiasing triangles</h3>
-
 
 
 <h3 align="middle">Part 3: Transforms</h3>
