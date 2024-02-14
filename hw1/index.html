@@ -194,6 +194,54 @@
 
 
 <h3 align="middle">Part 5: "Pixel sampling" for texture mapping</h3>
+<p>Pixel sampling is done by mapping each pixel (x,y) location to a (u,v) coordinate in texture space.
+  Because we need a smooth 1-to-1 mapping, the natural choice is to use the barycentric coordinates
+  implemented in the last section to map each pixel location to the (weighted) average of the texel locations
+  of its triangle's vertices.
+</p>
+<p>Once the texture coordinate is calculated, we need to sample the texture image at that location and map its
+  color value back to the sample buffer. The two choices for that are nearest pixel sampling and bilinear sampling.
+</p>
+<p>In nearest pixel sampling, one simply rounds the float (u,v) coordinate to its closest interger texel locaiton
+  and select that value for the mapping. When using bilinear sampling, one instead uses the same logic of barycentric
+  coordinate to linearly interpolate between the nearst 4 texels, in this case, done with 3 lerp function calls.
+  (2 calls to linearly interpolate in one direction and another to interpolate between those values to get interpolation in 2D)
+</p>
+
+<div align="middle">
+  <table style="width=100%">
+    <tr>
+      <td>
+        <img src="assets/png/task5_nearest_1.png" align="middle" width="400px"/>
+        <figcaption align="middle">Task 5 - Nearest sampling, no supersampling</figcaption>
+      </td>
+      <td>
+        <img src="assets/png/task5_nearest16.png" align="middle" width="400px"/>
+        <figcaption align="middle">Task 5 - Nearest sampling, 16x supersampling</figcaption>
+      </td>
+    </tr>
+    <br>
+    <tr>
+      <td>
+        <img src="assets/png/task5_bilinear_1.png" align="middle" width="400px"/>
+        <figcaption align="middle">Task 5 - Bilinear sampling, no supersampling</figcaption>
+      </td>
+      <td>
+        <img src="assets/png/task5_bilinear_16.png" align="middle" width="400px"/>
+        <figcaption align="middle">Task 5 - Bilinear sampling, 16x supersampling</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<p>In the above grid, one can see the anti-aliasing power of bilinear sampling compared to nearst sampling.
+  In the fast-changing signals around the campanile's windows nearst sampling has a hard time mapping the fine
+  details without artifacts like jaggies around edges. Bilinear interpolation helps reduce these effects
+  even without using the more memory-intesive method of super sampling.
+</p>
+<p>Just like supersampling, bilinear interpolation will show the most dramatic improvement over nearest sampling
+  when there are very fast changing signals in the texture map. 
+</p>
 
 
 <h3 align="middle">Part 6: "Level sampling" with mipmaps for texture mapping</h3>
