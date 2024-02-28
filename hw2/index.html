@@ -1,7 +1,358 @@
-<html>
-	<head>
-	</head>
-	<body>
-		Homework 2 index.html here
-	</body>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<style>
+  body {
+    padding: 100px;
+    width: 1000px;
+    margin: auto;
+    text-align: left;
+    font-weight: 300;
+    font-family: 'Open Sans', sans-serif;
+    color: #121212;
+  }
+  h1, h2, h3, h4 {
+    font-family: 'Source Sans Pro', sans-serif;
+  }
+</style>
+<title>CS 184/284A Meshed It</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<link href="https://fonts.googleapis.com/css?family=Open+Sans|Source+Sans+Pro" rel="stylesheet">
+</head>
+
+
+<body>
+
+<h1 align="middle">CS 184/284A: Computer Graphics and Imaging, Spring 2024</h1>
+<h1 align="middle">Homework 2: Meshed It</h1>
+<h2 align="middle">Alex Nguyen</h2>
+
+<br><br>
+
+<div>
+
+<h2 align="middle">Overview</h2>
+<p>This homework focuses on the calculation and traversal of 3D surfaces/meshes using geometric algorithms and
+	data structures. From interpolating Bezier curves in 1D, this was expanded to high dimension to interpolate over
+	surfaces, rendering smooth 3D objects in space. Then, these surfaces were then represented with the half-mesh data
+	structure to support efficient mesh traversal and local operations on the mesh such as calculating normal vector
+	for smooth shading and upsampling for higher-resolution rendering.
+</p>
+<p>Overall, we've built a general application capable of modeling 3D mesh surfaces with variable resolution, glued together
+	by the half-edge structure that can be easily navigated and operated upon. The most interesting takeaway from this endevaor
+	has been understanding the value and simplicity of that half-edge data structure in working with these large meshes with
+	overwhelmingly large and interconnected data. Specifically, in implementing the local operations (edge flips/splits),
+	one can really appreciate the connection between these mesh elements.
+</p>
+
+<h2 align="middle">Section I: Bezier Curves and Surfaces</h2>
+
+<h3 align="middle">Part 1: Bezier Curves with 1D de Casteljau Subdivision</h3>
+<p>
+	de Castelian's algorithm is a recursive interpolation algorithm used to calculate a point on the Bezier curve defined by
+	a set of control points. The recursion works by repeatedly applying the lerp function pairwise to the set of n control
+	points to obtain n-1 points, with which the algorithm repeats until 1 point remains. 
+</p>
+<p>It is implemented by a recursive function, each recursion level of which represents a subdivision level in de Castelian's 
+	algorithm and calls a helper evaluation function that performs lerp pairwise. 
+
+</p>
+
+<div align="middle">
+  <table style="width=100%">
+    <tr>
+      <td>
+        <img src="img/bezier_curves/bezier_1.png" align="middle" width="400px"/>
+        <figcaption align="middle">Initial points + bezier curve</figcaption>
+      </td>
+      <td>
+        <img src="img/bezier_curves/bezier_2.png" align="middle" width="400px"/>
+        <figcaption align="middle">Subdivision level 1</figcaption>
+      </td>
+    </tr>
+    <br>
+    <tr>
+      <td>
+        <img src="img/bezier_curves/bezier_3.png" align="middle" width="400px"/>
+        <figcaption align="middle">Subdivision level 2</figcaption>
+      </td>
+      <td>
+        <img src="img/bezier_curves/bezier_4.png" align="middle" width="400px"/>
+        <figcaption align="middle">Subdivision level 3</figcaption>
+      </td>
+    </tr>
+    <br>
+    <tr>
+      <td>
+        <img src="img/bezier_curves/bezier_5.png" align="middle" width="400px"/>
+        <figcaption align="middle">Subdivision level 4</figcaption>
+      </td>
+      <td>
+        <img src="img/bezier_curves/bezier_6.png" align="middle" width="400px"/>
+        <figcaption align="middle">Subdivision level 5 - Final point calculated</figcaption>
+      </td>
+    </tr>
+	<br>
+    <tr>
+      <td>
+        <img src="img/bezier_curves/bezier_mod.png" align="middle" width="400px"/>
+        <figcaption align="middle">Slightly modified curve with different parameter t</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<h3 align="middle">Part 2: Bezier Surfaces with Separable 1D de Casteljau</h3>
+<p>For surfaces (2D), de Casteljau works by separating the two dimensions and applying the algorithm sequentially in each.
+	First, the control points (m x n) are organized into rows, essenstially into m independent Bezier curves. 1D de Casteljau
+	can then be applied separately to each of these sets of n control points, each yielding one control point evaluated at t.
+	These m control points defined another Bezier curve in the other dimension, on which de Casteljau can then be applied again
+	to calculate a final evaluation point at parameter t on the original surface. 
+	This two-fold application is why it's called "Separable 1D".
+</p>
+<p>Below is an example of a surface evaluated by this algorithm</p>
+
+<div align="middle">
+	<img src="img/bezier_teapot.png" align="middle" width="500px"/>
+	<figcaption align="middle">teapot.bez - rendered with Separable 1D de Casteljau</figcaption>
+</div>
+
+<h2 align="middle">Section II: Triangle Meshes and Half-Edge Data Structure</h2>
+
+<h3 align="middle">Part 3: Area-Weighted Vertex Normals</h3>
+<p>To achieve a better shading function on smooth surfaces (Phong shading), we need the normal vectors at each vertex in the
+	mesh, normalized and weighted by the area of its corresponding face. This can be computed by a complete 
+	vertex traversal through the mesh.
+</p>
+<p>Using the connectedness of the hald-edge data structure, one can traverse around each vertex to get all of each neighbors.
+	The difference between each neighbor coordinates and the original vertex gives outgoing edge vectors, the cross products 
+	of which gives another vector normal to the face defined by said edges. The norm of this cross product also gives the area
+	of that face, which can be used to weight the normal vectors. The sum of the normal vectors calculated around a vertex is then
+	normalized at the end, which gives an approximate unit normal at each vertex.
+</p>
+<p>One debugging issue encountered during this implementation is the direction of these cross products, which depends on the winding order
+	or our vertex traversal loop. If pointed in the wrong direciton, the resulting shading gets really dark, which was fixed by simply
+	flipping the sign of the cross products before summation. Below is an image of the teapot rendered with flat shading (left) and 
+	Phong shading (right) with a marked difference in smoothness.
+</p>
+
+<div align="middle">
+  <table style="width=100%">
+    <tr>
+      <td>
+        <img src="img/teapot_dae/flat_teapot.png" align="middle" width="400px"/>
+        <figcaption align="middle">Teapot with Flat Shading</figcaption>
+      </td>
+      <td>
+        <img src="img/teapot_dae/phoong_teapot.png" align="middle" width="400px"/>
+        <figcaption align="middle">Teapot with Phong Shading, using Vertex Normals</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+
+
+<h3 align="middle">Part 4: Edge Flip</h3>
+<p>The edge flipping implementation was done by following the pseudocode in lecture and the suggestions provided in the assignment.
+	By simply drawing out a simple test case of two adjacent triangles before and after an edge flip, with all of its mesh elements
+	and corresponding half-edges laid out, one can form a 1-1 mapping between old and new pointers that help with the complicated pointer
+	reassignments needed for this operation.
+</p>
+<p>One thing that really helped with implementing this and during debugging was a systematic naming strategy for the different mesh-elements,
+	directly corresponding to those defined in our small test example (4 points, 4 edges, 2 faces). By first assigning these elements to 
+	carefully-named variables and access them relatively through the reference edge (e0), we get a pretty defined idea 
+	of what's going on with each element during this operation, which makes reassigning their pointers much easier. The helper function 
+	check_for was also used extensively to check the correct number of assignments are done to half-edges.
+</p>
+<p>Below is the image of the teapot with some randomly placed edge flips. Note that certain flipping operations caused dents in the surface
+	as shown, which is expected due to the curved nature of the surface.
+</p>
+
+<div align="middle">
+  <table style="width=100%">
+    <tr>
+      <td>
+        <img src="img/teapot_dae/flat_teapot.png" align="middle" width="400px"/>
+        <figcaption align="middle">Original Teapot Mesh</figcaption>
+      </td>
+      <td>
+        <img src="img/teapot_dae/flipped_teapot.png" align="middle" width="400px"/>
+        <figcaption align="middle">Teapot Mesh with a few edge flips</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+
+
+<h3 align="middle">Part 5: Edge Splits</h3>
+<p>Similar to edge flips, the procedure for implementing edge splits also involved first a systematic naming of each old and new mesh elements 
+	according to a small test case drawn out on paper. Unlike flipping, however, edge splitting requires new elements to be added to the mesh 
+	(2 new faces, 3 new edges, 1 new vertex, and 6 new half_edges). Each of these elements and their pointers need to assigned more carefully,
+	as the order of adding them matters to prevent segmentation errors. However, the same method applies of following exactly the mapping from
+	the old to new mesh according to the small test case.
+</p>
+<p>The mid point (new vertex) that gets added on the splitting edge need to first be defined with its position being the average of the 
+	edge's vertices and its half-edge pointer assigned to the edge's half edge. Then sequentially, each element gets assigned to a systematically
+	named variable, and accessed via half-edge references relative to the edge passed in (e0). One by one, the get reassigned, and new elements is
+	added via the mesh's built-in functions (newVertex, newFace, etc.) as needed.
+</p>
+<p>All 12 half-edges are then redefined one by one via the setNeighbor method, the order of which matters somewhat in making sure elements are being
+	accessed only through previously reassigned elements. Additionally, the isNew tag is added to the new midpoint vertex, as well as newly added edges
+	in order to support upsampling later on.
+</p>
+<p>Debugging in this part was tricky, due to the sheer number of pointers to manage, but due to the naming convention, it was relatively easy to identify,
+	which face/vertex/edge was buggy.
+</p>
+
+<div align="middle">
+  <table style="width=100%">
+    <tr>
+      <td>
+        <img src="img/quadball.png" align="middle" width="400px"/>
+        <figcaption align="middle">Quadball mesh</figcaption>
+      </td>
+      <td>
+        <img src="img/quadball_split.png" align="middle" width="400px"/>
+        <figcaption align="middle">Quadball mesh with some edge splits</figcaption>
+      </td>
+    </tr>
+	<br>
+	<tr>
+		<td>
+		  <img src="img/bean.png" align="middle" width="400px"/>
+		  <figcaption align="middle">Bean mesh</figcaption>
+		</td>
+		<td>
+		  <img src="img/bean_split_flip.png" align="middle" width="400px"/>
+		  <figcaption align="middle">Bean mesh with some edge flips/splits</figcaption>
+		</td>
+	  </tr>
+  </table>
+</div>
+
+<h3 align="middle">Part 6: Loop Subdivision for Mesh Upsampling</h3>
+<p>The loop subdivision algorithm was broken down into 5 steps for clearer implementation (as supposed to the suggested 3)</p>
+<li><b>Step 1:</b> Calculating the new position of each exisiting vertex. This is done via a complete vertex traversal through the mesh.
+	At each vertex, a neighbor traversal loop is done, collecting the position of each neighbor, summing them up and adding it to the 
+	center vertex position with the weighting scheme provided in lecture. The final weighted sum is stored in vertex->newPosition.
+	Also, the is_new tag is set to false for all existing vertex.
+</li>
+<li><b>Step 2:</b> Calculating the new position of to-be-added vertices at the midpoint of every edge. Since there will be a new vertex added at every
+	edge due to the splitting, this can be done by simply traversing through every edge in the existing mesh. At every edge, the sum of 
+	its vertices' positions as well as the sum of the remaining vertices of its adjacent faces are added up, weighted by the scheme 
+	given in lecture. This is also stored in each edge->newposition. Additional, the is_new tag is also set to false for every exisiting edge.
+</li>
+<li><b>Step 3:</b> Iterate over all edges in the mesh (again) and splitting everything. To prevent infinitely looping over a chaning edge list 
+	(due to new edges being added with every split operation), only edges connecting two old (is_new = False) vertices are to be split.
+	Remember that new edges/vertices are being created during splitting and their is_new tag is set to True. Also, as edge_split returns
+	a pointer to the new midpoint vertex created during the split, this pointer can be used to set that vertex->newposition to the
+	precalculated position stored in edge->newposition.
+</li>
+<li><b>Step 4:</b> Iterate over all edges (again) and splitting new edges connecting a new and old vertex. This is done by simply checking the is_new
+	tag of each edge as well as its endpoint vertices.
+</li>
+<li><b>Step 5:</b> Iterate over all vertices in the modified mesh and setting their position to newPosition. At this point, every vertex old and new
+	is guarenteed to have a set newPosition attribute due to the order of operations above, so updating positions is quite simple.
+</li>
+<p>Here is a couple of examples of the subdivision algorithm working on two different meshes</p>
+<div align="middle">
+	<table style="width=100%">
+	  <tr>
+		<td>
+		  <img src="img/cube_div/cube_l1.png" align="middle" width="400px"/>
+		  <figcaption align="middle">Cube Mesh - Level 1</figcaption>
+		</td>
+		<td>
+		  <img src="img/cube_div/cube_l2.png" align="middle" width="400px"/>
+		  <figcaption align="middle">Cube Mesh - Level 2</figcaption>
+		</td>
+	  </tr>
+	  <br>
+	  <tr>
+		  <td>
+			<img src="img/cube_div/cube_l3.png" align="middle" width="400px"/>
+			<figcaption align="middle">Cube Mesh - Level 3</figcaption>
+		  </td>
+		  <td>
+			<img src="img/cube_div/cube_l4.png" align="middle" width="400px"/>
+			<figcaption align="middle">Cube Mesh - Level 4</figcaption>
+		  </td>
+		</tr>
+		<br>
+		<tr>
+			<td>
+			  <img src="img/cube_div/cube_l5.png" align="middle" width="400px"/>
+			  <figcaption align="middle">Cube Mesh - Level 5</figcaption>
+			</td>
+			<td>
+			  <img src="img/cube_div/cube_l6.png" align="middle" width="400px"/>
+			  <figcaption align="middle">Cube Mesh - Level 6</figcaption>
+			</td>
+		  </tr>
+	</table>
+  </div>
+
+  <div align="middle">
+	<table style="width=100%">
+	  <tr>
+		<td>
+		  <img src="img/torus_div/torus_l1.png" align="middle" width="400px"/>
+		  <figcaption align="middle">Torus Mesh - Level 1</figcaption>
+		</td>
+		<td>
+		  <img src="img/torus_div/torus_l2.png" align="middle" width="400px"/>
+		  <figcaption align="middle">Torus Mesh - Level 2</figcaption>
+		</td>
+	  </tr>
+	  <br>
+	  <tr>
+		  <td>
+			<img src="img/torus_div/torus_l3.png" align="middle" width="400px"/>
+			<figcaption align="middle">Torus Mesh - Level 3</figcaption>
+		  </td>
+		  <td>
+			<img src="img/torus_div/torus_l4.png" align="middle" width="400px"/>
+			<figcaption align="middle">Torus Mesh - Level 4</figcaption>
+		  </td>
+		</tr>
+		<br>
+		<tr>
+			<td>
+			  <img src="img/torus_div/torus_l5.png" align="middle" width="400px"/>
+			  <figcaption align="middle">Torus Mesh - Level 5</figcaption>
+			</td>
+			<td>
+			  <img src="img/torus_div/torus_l6.png" align="middle" width="400px"/>
+			  <figcaption align="middle">Torus Mesh - Level 6</figcaption>
+			</td>
+		  </tr>
+	</table>
+  </div>
+
+  <p>Note that in the cube mesh, corners and edges becomes assymetric after a few upsampling steps and remains points of non-smoothness
+	in the subdivided mesh. Intuitively, this would be curbed by preprocessing the cube with some edge splits and flips 
+	at the edges and corner before subdividing.
+	An example of which where edges around one corner is split before upsampling is shown below:
+  </p>
+  <div align="middle">
+	<table style="width=100%">
+	  <tr>
+		<td>
+		  <img src="img/cube_non_process_corner.png" align="middle" width="400px"/>
+		  <figcaption align="middle">Cube Mesh - No Preproccesing</figcaption>
+		</td>
+		<td>
+		  <img src="img/cube_processed_corner.png" align="middle" width="400px"/>
+		  <figcaption align="middle">Cube Mesh - With Pre-Splitting Edges Around a Corner</figcaption>
+		</td>
+	  </tr>
+	</table>
+  </div>
+  <p>Preprocessing does not seem to help with this corner problem. This is due to the fact that special vertices in a mesh is a provable
+  inevitability and these seem to occur at the corners of the cube.</p>
+  <p>The same goes for the assymetry problem. No combination of edge splits/flips before upsampling seems to alleviate the assymetry of the 
+	upsampled mesh. In most cases, it makes it worse.
+  </p>
+
+</body>
 </html>
