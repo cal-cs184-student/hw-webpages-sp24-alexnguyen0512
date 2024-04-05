@@ -1,7 +1,465 @@
-<html>
-	<head>
-	</head>
-	<body>
-		Homework 4 index.html here
-	</body>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<style>
+  body {
+    padding: 100px;
+    width: 1000px;
+    margin: auto;
+    text-align: left;
+    font-weight: 300;
+    font-family: 'Open Sans', sans-serif;
+    color: #121212;
+  }
+  h1, h2, h3, h4 {
+    font-family: 'Source Sans Pro', sans-serif;
+  }
+</style>
+<title>CS 184/284A Pathtracer</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<link href="https://fonts.googleapis.com/css?family=Open+Sans|Source+Sans+Pro" rel="stylesheet">
+</head>
+
+
+<body>
+
+<h1 align="middle">CS 184/284A: Computer Graphics and Imaging, Spring 2024</h1>
+<h1 align="middle">Homework 4: Cloth Sim</h1>
+<h2 align="middle">Alex Nguyen</h2>
+
+<br><br>
+
+<div>
+
+<h2 align="middle">Overview</h2>
+<p>This project aims at implementing a realisitic/physical simulation of a cloth in 3D space, interacting with external forces like gravity
+	as well as with itself and other objects in the space. 
+</p>
+<p>The cloth is represented by a mesh structure of masses and springs with variable density and spring constants, 
+	which was intitialized by placing evenly spaced masses in a 2D grid and connecting them with structural/shearing/bending
+	constraints. This was rather straightforward to implement using pointer arithmetic to connect each mass to their respective neighbors in
+	the 1D vector structure. 
+</p>
+<p>The second part was implementing the physical laws in our simulation model, namely adding up extertnal accelerations
+	(like gravity) and spring forces to determine the acceleration of each point mass. This was done by looping through each point mass, adding up
+	external forces, and then looping through each constraint (spring), calculating the strain and consequently the elastic force on its
+	end points. At the end, we have an internally contrained mesh being affected by a downward gravitational force, which, within
+	approximations, acts as a physically realistic cloth.
+</p>
+<p>For realistic simulation, we also needed to implement the mesh's interactions with other objects in the scene, including itself. This
+	involves checking for collision at each timestep for each pointmass. When collision is detected, the colliding pointmasses' positions are
+	corrected appropriately to disallow clipping through objects in the scene and itself. 
+</p>
+<p>Finally, shader programs were written to provide shading to the simulation in parallel. Diffuse and Blinn-Phong shading were 
+	implemented, as well as texture mapping, bump mapping, and displacement mapping. This involves implementing the same shading functions
+	in past projects, only with a slightly different syntax. 
+</p>
+
+<h2 align="middle">Part 1: Masses and springs</h2>
+
+<p>These are some screenshots of the cloth mesh with different constraints enabled</p>
+
+<div align="middle">
+  <table style="width=100%">
+    <tr>
+      <td>
+        <img src="img/Part 1/all_constraints.png" align="middle" width="400px"/>
+        <figcaption align="middle">Cloth mesh with all constraints - zoomed in</figcaption>
+      </td>
+      <td>
+        <img src="img/Part 1/all_constraints_zoomed_out.png" align="middle" width="400px"/>
+        <figcaption align="middle">Cloth mesh with all constraints</figcaption>
+      </td>
+    </tr>
+    <br>
+    <tr>
+      <td>
+        <img src="img/Part 1/only_shearing.png" align="middle" width="400px"/>
+        <figcaption align="middle">Cloth mesh with only shearing constraints - zoomed in</figcaption>
+      </td>
+      <td>
+        <img src="img/Part 1/only_shearing_zoomed_out.png" align="middle" width="400px"/>
+        <figcaption align="middle">Cloth mesh with only shearing constraints</figcaption>
+      </td>
+    </tr>
+    <br>
+    <tr>
+      <td>
+        <img src="img/Part 1/without_shearing.png" align="middle" width="400px"/>
+        <figcaption align="middle">Cloth mesh without shearing constraints - zoomed in</figcaption>
+      </td>
+      <td>
+        <img src="img/Part 1/without_shearing_zoomed_out.png" align="middle" width="400px"/>
+        <figcaption align="middle">Cloth mesh without shearing constraints</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<h2 align="middle">Part 2: Simulation via numerical integration</h2>
+<p>As seen in the six images below, showing the cloth behavior at the beginning and rest state of the simulation with different elastic
+	constant settings, we can see that the higher ks values results in a "stiffer" cloth. In the first 10 steps, the size of the triangular 
+	corners being folded over is larger for the cloths with higher ks, indicating that the stiffer internal constraints make the weight of
+	the rest of the cloth pull more on the corner point masses as they fall, leading to them falling outwards rather than straight down.
+	At the infinity limit, the cloth would fall like a plane anchored at one edge.
+	In the rest state, we also see that the lower ks cloths are more "slouchy" compared to those with higher ks. The pinned edge is allowed
+	to lengthen more, leading to a much more deformed shape. 
+</p>
+<div align="middle">
+  <table style="width=100%">
+    <tr>
+      <td align="middle">
+        <img src="img/Part 2/lowks_step10.png" align="middle" width="400px"/>
+        <figcaption align="middle">Initial state (10 steps) - pinned2.json - ks=500, density=15</figcaption>
+      </td>
+      <td align="middle">
+        <img src="img/Part 2/lowks_end.png" align="middle" width="400px"/>
+        <figcaption align="middle">Rest state - pinned2.json - ks=500, density=15</figcaption>
+      </td>
+    </tr>
+	<br>
+	<tr>
+		<td align="middle"> 
+		  <img src="img/Part 2/medks_step10.png" align="middle" width="400px"/>
+		  <figcaption align="middle">Initial state (10 steps) - pinned2.json - ks=5000, density=15</figcaption>
+		</td>
+		<td align="middle">
+		  <img src="img/Part 2/medks_end.png" align="middle" width="400px"/>
+		  <figcaption align="middle">Rest state - pinned2.json - ks=5000, density=15</figcaption>
+		</td>
+	  </tr>
+	  <tr>
+		<td align="middle"> 
+		  <img src="img/Part 2/highks_step10.png" align="middle" width="400px"/>
+		  <figcaption align="middle">Initial state (10 steps) - pinned2.json - ks=50000, density=15</figcaption>
+		</td>
+		<td align="middle">
+		  <img src="img/Part 2/highks_end.png" align="middle" width="400px"/>
+		  <figcaption align="middle">Rest state - pinned2.json - ks=50000, density=15</figcaption>
+		</td>
+	  </tr>
+	</table>
+</div>
+
+<p>The effect of density on the simulation behavior is also quite intuitive. Higher density lead to a heavier cloth. Based on the
+	physics of kinematics, this does not affect the behavior at the initial steps of the simulation as the acceleration is constant
+	regardless of mass. However, density significantly affects how the cloth sits in its final rest state as more mass causes the cloth to
+	rest lower. It takes more elongation of the springs in the system to create enough elastic force to counteract the stronger gravitational
+	pull on a heavier cloth.
+</p>
+
+<div align="middle">
+	<table style="width=100%">
+	  <tr>
+		<td align="middle"> 
+		  <img src="img/Part 2/lowDensity_step10.png" align="middle" width="400px"/>
+		  <figcaption align="middle">Initial state (10 steps) - pinned2.json - ks=5000, density=5</figcaption>
+		</td>
+		<td align="middle">
+		  <img src="img/Part 2/lowDensity_end.png" align="middle" width="400px"/>
+		  <figcaption align="middle">Rest state - pinned2.json - ks=5000, density=5</figcaption>
+		</td>
+	  </tr>
+	  <tr>
+		<td align="middle"> 
+		  <img src="img/Part 2/medDensity_step10.png" align="middle" width="400px"/>
+		  <figcaption align="middle">Initial state (10 steps) - pinned2.json - ks=5000, density=50</figcaption>
+		</td>
+		<td align="middle">
+		  <img src="img/Part 2/medDensity_end.png" align="middle" width="400px"/>
+		  <figcaption align="middle">Rest state - pinned2.json - ks=5000, density=50</figcaption>
+		</td>
+	  </tr>
+	  <tr>
+		<td align="middle"> 
+		  <img src="img/Part 2/highDensity_step10.png" align="middle" width="400px"/>
+		  <figcaption align="middle">Initial state (10 steps) - pinned2.json - ks=5000, density=500</figcaption>
+		</td>
+		<td align="middle">
+		  <img src="img/Part 2/highDensity_end.png" align="middle" width="400px"/>
+		  <figcaption align="middle">Rest state - pinned2.json - ks=5000, density=500</figcaption>
+		</td>
+	  </tr>
+	</table>
+</div>
+
+<p>The effect of damping is opposite from above, in that it does not affect the final rest state of the cloth (given enough time to
+	reach a rest state), but it affects the fall trajectory. Higher damping leads to a smoother, slower fall, and takes longer to converge
+	to a final state.
+</p>
+
+<div align="middle">
+	<table style="width=100%">
+	  <tr>
+		<td align="middle"> 
+		  <img src="img/Part 2/medDamping_step10.png" align="middle" width="400px"/>
+		  <figcaption align="middle">Initial state (10 steps) - pinned2.json - ks=5000, density=15 -  0.5 damping</figcaption>
+		</td>
+		<td align="middle">
+		  <img src="img/Part 2/highDamping_step10.png" align="middle" width="400px"/>
+		  <figcaption align="middle">Initial state (10 steps) - pinned2.json - ks=5000, density=15 -  1.0 damping</figcaption>
+		</td>
+	  </tr>
+  </table>
+</div>
+
+<h2 align="middle">Part 3: Handling collisions with other objects</h2>
+
+<p>
+Again, the same effect as above applies here. A higher ks value makes a cloth "stiffer". And draping a stiffer cloth over a sphere,
+as one would expect, creates folds that stand up off the sphere's surface. The intenal contraints prevents the cloth to mold perfectly onto 
+the sphere. In the low ks simulation, then, the cloth drapes perfectly over the entire sphere without outstanding creases.
+</p>
+
+<div align="middle">
+  <table style="width=100%">
+    <tr>
+      <td align="middle">
+        <img src="img/Part 3/smallks_sphere.png" align="middle" width="400px"/>
+        <figcaption align="middle">Cloth draping over sphere - low ks</figcaption>
+      </td>
+      <td align="middle">
+        <img src="img/Part 3/medks_sphere.png" align="middle" width="400px"/>
+        <figcaption align="middle">Cloth draping over sphere - medium ks</figcaption>
+      </td>
+    </tr>
+	<tr>
+		<td align="middle">
+		  <img src="img/Part 3/highks_sphere.png" align="middle" width="400px"/>
+		  <figcaption align="middle">Cloth draping over sphere - high ks</figcaption>
+		</td>
+		<td align="middle">
+		  <img src="img/Part 3/plane.png" align="middle" width="400px"/>
+		  <figcaption align="middle">Cloth falling onto plane</figcaption>
+		</td>
+	  </tr>
+  </table>
+</div>
+
+<h2 align="middle">Part 4: Handling self-collision</h2>
+
+<p> After implementing self collisions, the cloth can now fold realistically without clipping over itself. By initializing the cloth with random offsets
+	in the z (out-of-plane) direction, the cloth can naturally fold down and create natural folds when oriented upright. The folding in this case 
+	still follows the same physics as the fold observed when draping the cloth over an object like above, as do the effects of ks and density.
+</p>
+<p>The higher the ks value (i.e: the stiffer the cloth is) the folds are larger when the cloth falls over itself. This is physically sound, as the
+	stiffer contraints would prevent sharp creases and enforces larger radii of curvature in the folds. In the rest state, the cloth with low ks
+	also acts more "liquid" and lays flatter on the plane, while the larger fold curvature elevates parts of the cloth off of the plane in the high
+	ks case.
+</p>
+<p>While the elastic restraints in the mesh acts to restrict sharp folds, gravity acts as the opposing force, pulling the cloth over itself and
+	promotes smaller curvature in the folds. Therefore, higher density values yields a similar simulation result, in effect, than those with low
+	ks values. Below are a grid of different snap shots of simulations with various ks and density settings:
+</p>
+
+<div align="middle">
+	<table style="width=100%">
+	  <tr>
+		<td align="middle">
+		  <img src="img/Part 4/default_start.png" align="middle" width="300px"/>
+		  <figcaption align="middle">Default settings - start</figcaption>
+		</td>
+		<td align="middle">
+		  <img src="img/Part 4/default_mid.png" align="middle" width="300px"/>
+		  <figcaption align="middle">Default settings - mid</figcaption>
+		</td>
+		<td align="middle">
+			<img src="img/Part 4/default_end.png" align="middle" width="300px"/>
+			<figcaption align="middle">Default settings - end</figcaption>
+		  </td>
+	  </tr>
+	  <br>
+	  <tr>
+		<td align="middle">
+		  <img src="img/Part 4/lowks_start.png" align="middle" width="300px"/>
+		  <figcaption align="middle">Low ks - start</figcaption>
+		</td>
+		<td align="middle">
+		  <img src="img/Part 4/lowks_mid.png" align="middle" width="300px"/>
+		  <figcaption align="middle">Low ks - mid</figcaption>
+		</td>
+		<td align="middle">
+			<img src="img/Part 4/lowks_end.png" align="middle" width="300px"/>
+			<figcaption align="middle">Low ks- end</figcaption>
+		  </td>
+	  </tr>
+	  <br>
+	  <tr>
+		<td align="middle">
+		  <img src="img/Part 4/highks_start.png" align="middle" width="300px"/>
+		  <figcaption align="middle">High ks - start</figcaption>
+		</td>
+		<td align="middle">
+		  <img src="img/Part 4/highks_mid.png" align="middle" width="300px"/>
+		  <figcaption align="middle">High ks - mid</figcaption>
+		</td>
+		<td align="middle">
+			<img src="img/Part 4/highks_end.png" align="middle" width="300px"/>
+			<figcaption align="middle">High ks - end</figcaption>
+		  </td>
+	  </tr>
+	  <br>
+	  <tr>
+		<td align="middle">
+		  <img src="img/Part 4/lowDensity_start.png" align="middle" width="300px"/>
+		  <figcaption align="middle">Low density - start</figcaption>
+		</td>
+		<td align="middle">
+		  <img src="img/Part 4/lowDensity_mid.png" align="middle" width="300px"/>
+		  <figcaption align="middle">Low density - mid</figcaption>
+		</td>
+		<td align="middle">
+			<img src="img/Part 4/lowDensity_end.png" align="middle" width="300px"/>
+			<figcaption align="middle">Low density - end</figcaption>
+		  </td>
+	  </tr>
+	  <br>
+	  <tr>
+		<td align="middle">
+		  <img src="img/Part 4/highdensity_start.png" align="middle" width="300px"/>
+		  <figcaption align="middle">High density - start</figcaption>
+		</td>
+		<td align="middle">
+		  <img src="img/Part 4/highdensity_mid.png" align="middle" width="300px"/>
+		  <figcaption align="middle">High density - mid</figcaption>
+		</td>
+		<td align="middle">
+			<img src="img/Part 4/highdensity_end.png" align="middle" width="300px"/>
+			<figcaption align="middle">High density - end</figcaption>
+		  </td>
+	  </tr>
+	</table>
+</div>
+
+<h2 align="middle">Part 5: Shaders</h2>
+<p>Shaders are GLSL programs that can be run in a highly parallel manner, each carrying out independent calculations for each vertex/fragment
+	to output the correct pixel values given a shading model without the need for expensive global ray tracing. 
+	They're straightforward programs that take in relevant inputs such as camera/object positions, texture maps, etc and 
+	outputs values like transformed positions, pixel rgba values. These shaders can be packed together end-to-end to complete the rendering
+	pipeline. The advantage is in their parallelizability, which enable them to be run on GPU, cutting down sigficant compute time from
+	ray tracing on CPU alone
+</p>
+<p>The Blinn-Phong shading model is a combination of 3 different illuminance modes in a space, ambient lighting, diffuse lighting, and specular lighting.
+	Making use of Lambert's cosine law, which is the basis for the diffuse term in the model, Blinn-Phong extend it to include specular effects,
+	which takes into account viewing directions, and ambient lighting, which is a constant background luminance level in the scene. Together, the
+	three generate more realistic lighting than any one can do on their own. 
+</p>
+
+<div align="middle">
+  <table style="width=100%">
+    <tr>
+      <td>
+        <img src="img/Part 5/phong_diffuse.png" align="middle" width="400px"/>
+        <figcaption align="middle">Blinn-Phong Diffuse only</figcaption>
+      </td>
+      <td>
+        <img src="img/Part 5/phong_specular.png" align="middle" width="400px"/>
+        <figcaption align="middle">Blinn-Phong Specular only</figcaption>
+      </td>
+    </tr>
+	<br>
+	<tr>
+		<td>
+		  <img src="img/Part 5/phong_ambient.png" align="middle" width="400px"/>
+		  <figcaption align="middle">Blinn-Phong Ambient only</figcaption>
+		</td>
+		<td>
+		  <img src="img/Part 5/phong_all.png" align="middle" width="400px"/>
+		  <figcaption align="middle">Blinn-Phong Complete</figcaption>
+		</td>
+	  </tr>
+  </table>
+</div>
+
+<p>We can also use shaders to map textures onto a surface, using the same mapping techniques in C, now in parallel.</p>
+<div align="middle">
+	<img src="img/Part 5/texture_haring.png" align="middle" width="400px"/>
+	<figcaption align="middle">Keith Haring Texture Mapping</figcaption>
+  </div>
+
+<p>To give more details on our texture-mapped surface, we implemented two methods: bump mapping and displacement mapping.
+	The former works by modifying the normal vector at each vertex based on an input height map, giving the illusion to texture without
+	actually modifying the surface topology, while the latter changes the position of each vertex based on the height map, morphing the
+	topology itself. As seen below, bump mapping gives a more detailed texture than naive texture mapping, as the shadows and highlights
+	in the texture is reflected correctly due to the modifed normals. However, looking a the perimeter of the ball and cloth, one can see
+	that the smoothness does not match the expected texture. That's where displacement mapping can provide a more realistic rendering,
+	by changing the geometry of the object itself to match the texture height map.
+</p>
+
+<div align="middle">
+	<table style="width=100%">
+	  <tr>
+		<td>
+		  <img src="img/Part 5/fine_bump_ball.png" align="middle" width="400px"/>
+		  <figcaption align="middle">Bump Mapping - Ball only - 128x128</figcaption>
+		</td>
+		<td>
+		  <img src="img/Part 5/fine_bump_final.png" align="middle" width="400px"/>
+		  <figcaption align="middle">Bump Mapping - Draped - 128x128</figcaption>
+		</td>
+	  </tr>
+	  <br>
+	  <tr>
+		  <td>
+			<img src="img/Part 5/fine_displacement_ball.png" align="middle" width="400px"/>
+			<figcaption align="middle">Displacement Mapping - Ball only - 128x128</figcaption>
+		  </td>
+		  <td>
+			<img src="img/Part 5/fine_displacement_final.png" align="middle" width="400px"/>
+			<figcaption align="middle">Displacement Mapping - Draped - 128x128</figcaption>
+		  </td>
+		</tr>
+	</table>
+  </div>
+
+<p>We can also change the sphere's mesh coarseness to see how the different mapping methods react. The coarser resolution
+	primarily affect the quality of displacement mapping, while bump mapping is less affected by it, except for a slight decrease in detail.
+	For displacement mapping, because of the lower density of vertices, the edge of the rendered sphered becomes rather jagged with straight
+	edges that do not match the texture. 
+</p>
+<div align="middle">
+	<table style="width=100%">
+	  <tr>
+		<td>
+		  <img src="img/Part 5/coarse_bump_ball.png" align="middle" width="400px"/>
+		  <figcaption align="middle">Bump Mapping - Ball only - 16x16</figcaption>
+		</td>
+		<td>
+		  <img src="img/Part 5/coarse_bump_final.png" align="middle" width="400px"/>
+		  <figcaption align="middle">Bump Mapping - Draped - 16x16</figcaption>
+		</td>
+	  </tr>
+	  <br>
+	  <tr>
+		  <td>
+			<img src="img/Part 5/coarse_displacement_ball.png" align="middle" width="400px"/>
+			<figcaption align="middle">Displacement Mapping - Ball only - 16x16</figcaption>
+		  </td>
+		  <td>
+			<img src="img/Part 5/coarse_displacement_final.png" align="middle" width="400px"/>
+			<figcaption align="middle">Displacement Mapping - Draped - 16x16</figcaption>
+		  </td>
+		</tr>
+	</table>
+  </div>
+
+  <p>Finally, we also implemented a mirror shader, which reflects the image provided by a texture cube map as if the ball/cloth is placed
+	in the middle of the scene in the texture.
+  </p>
+  <div align="middle">
+	<table style="width=100%">
+	  <tr>
+		<td>
+		  <img src="img/Part 5/mirror_ball.png" align="middle" width="400px"/>
+		  <figcaption align="middle">Mirror Mapping - Ball only</figcaption>
+		</td>
+		<td>
+		  <img src="img/Part 5/mirror_final.png" align="middle" width="400px"/>
+		  <figcaption align="middle">Mirror Mapping - Draped</figcaption>
+		</td>
+	  </tr>
+	</table>
+  </div>
+
+</body>
 </html>
